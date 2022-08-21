@@ -489,3 +489,21 @@ ensures that as new modalities are added, and current modalities are extended, n
 The test suite also asserts the correct working behavior of the utility session code provided in the client folder. The tests can be run 
 by using the provided `Makefile` and running the `make test` command.
 
+# Customized
+
+## Changes
+
+- account_whitelist
+    - To define accounts (admins) who can perform restricted actions (initialize or set_variables with `account_whitelist`)
+
+- Minting::Installer enhanced
+    - Only installer or whitelisted accounts can mint new tokens
+
+- MetadataMutability::Restricted (u8:2)
+    - Only installer or whitelisted accounts / contracts can set metadata
+
+## Example
+    
+```bash
+casper-client put-deploy -n http://localhost:11101/rpc --chain-name "casper-net-1" --payment-amount 500000000000 -k ~/casper/casper-node/utils/nctl/assets/net-1/nodes/node-1/keys/secret_key.pem --session-path ~/casper/enhanced-nft/contract/target/wasm32-unknown-unknown/release/contract.wasm --session-arg "collection_name:string='enhanced-nft-1'" --session-arg "collection_symbol:string='ENFT-1'" --session-arg "total_token_supply:u256='10'" --session-arg "ownership_mode:u8='2'" --session-arg "nft_kind:u8='1'" --session-arg "nft_holder_mode:u8='2'" --session-arg "minting_mode:u8='0'" --session-arg "nft_metadata_kind:u8='2'" --session-arg "identifier_mode:u8='0'" --session-arg "metadata_mutability:u8='2'"
+```
