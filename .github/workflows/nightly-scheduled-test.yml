@@ -19,6 +19,9 @@ jobs:
 
       - name: Setup
         run: make prepare
+      
+      - name: Run build-contracts
+        run: make build-contract
 
       - name: Run tests
         run: make test

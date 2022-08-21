@@ -22,9 +22,9 @@ use alloc::{
 use core::convert::TryInto;
 
 use casper_types::{
-    contracts::NamedKeys, runtime_args, CLType, CLValue, ContractHash, ContractPackageHash,
-    ContractVersion, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Key,
-    Parameter, RuntimeArgs, account::AccountHash,
+    account::AccountHash, contracts::NamedKeys, runtime_args, CLType, CLValue, ContractHash,
+    ContractPackageHash, ContractVersion, EntryPoint, EntryPointAccess, EntryPointType,
+    EntryPoints, Key, Parameter, RuntimeArgs,
 };
 
 use casper_contract::{
@@ -34,15 +34,16 @@ use casper_contract::{
 
 use crate::{
     constants::{
-        ACCESS_KEY_NAME, ALLOW_MINTING, ARG_ALLOW_MINTING, ARG_APPROVE_ALL, ARG_BURN_MODE,
-        ARG_COLLECTION_NAME, ARG_COLLECTION_SYMBOL, ARG_CONTRACT_WHITELIST, ARG_ACCOUNT_WHITELIST, ARG_HOLDER_MODE,
-        ARG_IDENTIFIER_MODE, ARG_JSON_SCHEMA, ARG_METADATA_MUTABILITY, ARG_MINTING_MODE,
-        ARG_NFT_KIND, ARG_NFT_METADATA_KIND, ARG_OPERATOR, ARG_OWNERSHIP_MODE, ARG_RECEIPT_NAME,
-        ARG_SOURCE_KEY, ARG_TARGET_KEY, ARG_TOKEN_META_DATA, ARG_TOKEN_OWNER,
-        ARG_TOTAL_TOKEN_SUPPLY, ARG_WHITELIST_MODE, BURNT_TOKENS, BURN_MODE, COLLECTION_NAME,
-        COLLECTION_SYMBOL, CONTRACT_NAME, CONTRACT_VERSION, CONTRACT_WHITELIST, ACCOUNT_WHITELIST,
-        ENTRY_POINT_APPROVE, ENTRY_POINT_BALANCE_OF, ENTRY_POINT_BURN, ENTRY_POINT_GET_APPROVED,
-        ENTRY_POINT_INIT, ENTRY_POINT_METADATA, ENTRY_POINT_MINT, ENTRY_POINT_OWNER_OF,
+        ACCESS_KEY_NAME, ACCOUNT_WHITELIST, ALLOW_MINTING, ARG_ACCOUNT_WHITELIST,
+        ARG_ALLOW_MINTING, ARG_APPROVE_ALL, ARG_BURN_MODE, ARG_COLLECTION_NAME,
+        ARG_COLLECTION_SYMBOL, ARG_CONTRACT_WHITELIST, ARG_HOLDER_MODE, ARG_IDENTIFIER_MODE,
+        ARG_JSON_SCHEMA, ARG_METADATA_MUTABILITY, ARG_MINTING_MODE, ARG_NFT_KIND,
+        ARG_NFT_METADATA_KIND, ARG_OPERATOR, ARG_OWNERSHIP_MODE, ARG_RECEIPT_NAME, ARG_SOURCE_KEY,
+        ARG_TARGET_KEY, ARG_TOKEN_META_DATA, ARG_TOKEN_OWNER, ARG_TOTAL_TOKEN_SUPPLY,
+        ARG_WHITELIST_MODE, BURNT_TOKENS, BURN_MODE, COLLECTION_NAME, COLLECTION_SYMBOL,
+        CONTRACT_NAME, CONTRACT_VERSION, CONTRACT_WHITELIST, ENTRY_POINT_APPROVE,
+        ENTRY_POINT_BALANCE_OF, ENTRY_POINT_BURN, ENTRY_POINT_GET_APPROVED, ENTRY_POINT_INIT,
+        ENTRY_POINT_METADATA, ENTRY_POINT_MINT, ENTRY_POINT_OWNER_OF,
         ENTRY_POINT_SET_APPROVE_FOR_ALL, ENTRY_POINT_SET_TOKEN_METADATA, ENTRY_POINT_SET_VARIABLES,
         ENTRY_POINT_TRANSFER, HASH_KEY_NAME, HOLDER_MODE, IDENTIFIER_MODE, INSTALLER, JSON_SCHEMA,
         METADATA_CEP78, METADATA_CUSTOM_VALIDATED, METADATA_MUTABILITY, METADATA_NFT721,
@@ -1235,8 +1236,7 @@ pub extern "C" fn set_token_metadata() {
     // Restricted mode, only installer, whitelisted accounts, contracts can update metadata
     if let MetadataMutability::Restricted = metadata_mutability {
         utils::require_valid_accounts_or_contracts();
-    }
-    else if let Some(token_owner_key) = token_owner {
+    } else if let Some(token_owner_key) = token_owner {
         let caller = utils::get_verified_caller().unwrap_or_revert();
         if caller != token_owner_key {
             runtime::revert(NFTCoreError::InvalidTokenOwner)

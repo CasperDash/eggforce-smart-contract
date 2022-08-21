@@ -16,11 +16,14 @@ use casper_types::{
     api_error,
     bytesrepr::{self, FromBytes, ToBytes},
     system::CallStackElement,
-    ApiError, CLTyped, ContractHash, Key, URef, Tagged, KeyTag,
+    ApiError, CLTyped, ContractHash, Key, KeyTag, Tagged, URef,
 };
 
 use crate::{
-    constants::{ARG_TOKEN_HASH, ARG_TOKEN_ID, HOLDER_MODE, OWNED_TOKENS, OWNERSHIP_MODE, CONTRACT_WHITELIST, INSTALLER, ACCOUNT_WHITELIST},
+    constants::{
+        ACCOUNT_WHITELIST, ARG_TOKEN_HASH, ARG_TOKEN_ID, CONTRACT_WHITELIST, HOLDER_MODE,
+        INSTALLER, OWNED_TOKENS, OWNERSHIP_MODE,
+    },
     error::NFTCoreError,
     modalities::{NFTHolderMode, NFTIdentifierMode, OwnershipMode, TokenIdentifier},
     BurnMode, BURNT_TOKENS, BURN_MODE,
@@ -410,12 +413,11 @@ pub(crate) fn require_valid_contracts() {
         .into_hash()
         .map(ContractHash::new)
         .unwrap_or_revert_with(NFTCoreError::InvalidKey);
-    let contract_whitelist =
-        get_stored_value_with_user_errors::<Vec<ContractHash>>(
-            CONTRACT_WHITELIST,
-            NFTCoreError::MissingContractWhiteList,
-            NFTCoreError::InvalidContractWhitelist,
-        );
+    let contract_whitelist = get_stored_value_with_user_errors::<Vec<ContractHash>>(
+        CONTRACT_WHITELIST,
+        NFTCoreError::MissingContractWhiteList,
+        NFTCoreError::InvalidContractWhitelist,
+    );
     // Revert if the calling contract is not in the whitelist.
     if !contract_whitelist.contains(&calling_contract) {
         runtime::revert(NFTCoreError::UnlistedContractHash)
@@ -433,7 +435,6 @@ pub(crate) fn require_valid_accounts() {
 
     // Only the installing account or admins can change the mutable variables.
     if installer != caller_account {
-
         // Not the installer, let's check whitelist
         let account_whitelist = get_stored_value_with_user_errors::<Vec<AccountHash>>(
             ACCOUNT_WHITELIST,

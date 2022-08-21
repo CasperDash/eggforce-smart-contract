@@ -11,15 +11,15 @@ use casper_types::{
 
 use crate::utility::{
     constants::{
-        ACCOUNT_USER_1, ACCOUNT_USER_2, ARG_APPROVE_ALL, ARG_CONTRACT_WHITELIST,
-        ARG_IS_HASH_IDENTIFIER_MODE, ARG_MINTING_MODE, ARG_NFT_CONTRACT_HASH, ARG_OPERATOR,
-        ARG_TOKEN_HASH, ARG_TOKEN_ID, ARG_TOKEN_META_DATA, ARG_TOKEN_OWNER, BALANCES,
-        BALANCE_OF_SESSION_WASM, CONTRACT_NAME, ENTRY_POINT_APPROVE, ENTRY_POINT_MINT,
-        ENTRY_POINT_SET_APPROVE_FOR_ALL, ENTRY_POINT_SET_VARIABLES, MALFORMED_META_DATA,
-        METADATA_CEP78, METADATA_CUSTOM_VALIDATED, METADATA_NFT721, METADATA_RAW,
-        MINTING_CONTRACT_WASM, MINT_SESSION_WASM, NFT_CONTRACT_WASM, NUMBER_OF_MINTED_TOKENS,
-        OPERATOR, OWNED_TOKENS, RECEIPT_NAME, TEST_COMPACT_META_DATA, TEST_PRETTY_721_META_DATA,
-        TEST_PRETTY_CEP78_METADATA, TOKEN_ISSUERS, TOKEN_OWNERS, ARG_ACCOUNT_WHITELIST,
+        ACCOUNT_USER_1, ACCOUNT_USER_2, ARG_ACCOUNT_WHITELIST, ARG_APPROVE_ALL,
+        ARG_CONTRACT_WHITELIST, ARG_IS_HASH_IDENTIFIER_MODE, ARG_MINTING_MODE,
+        ARG_NFT_CONTRACT_HASH, ARG_OPERATOR, ARG_TOKEN_HASH, ARG_TOKEN_ID, ARG_TOKEN_META_DATA,
+        ARG_TOKEN_OWNER, BALANCES, BALANCE_OF_SESSION_WASM, CONTRACT_NAME, ENTRY_POINT_APPROVE,
+        ENTRY_POINT_MINT, ENTRY_POINT_SET_APPROVE_FOR_ALL, ENTRY_POINT_SET_VARIABLES,
+        MALFORMED_META_DATA, METADATA_CEP78, METADATA_CUSTOM_VALIDATED, METADATA_NFT721,
+        METADATA_RAW, MINTING_CONTRACT_WASM, MINT_SESSION_WASM, NFT_CONTRACT_WASM,
+        NUMBER_OF_MINTED_TOKENS, OPERATOR, OWNED_TOKENS, RECEIPT_NAME, TEST_COMPACT_META_DATA,
+        TEST_PRETTY_721_META_DATA, TEST_PRETTY_CEP78_METADATA, TOKEN_ISSUERS, TOKEN_OWNERS,
     },
     installer_request_builder::{
         InstallerRequestBuilder, MetadataMutability, MintingMode, NFTHolderMode, NFTIdentifierMode,
@@ -845,7 +845,10 @@ fn should_allow_whitelisted_account_to_mint() {
         },
     )
     .build();
-    builder.exec(transfer_to_account_1).expect_success().commit();
+    builder
+        .exec(transfer_to_account_1)
+        .expect_success()
+        .commit();
     let transfer_to_account_2 = ExecuteRequestBuilder::transfer(
         *DEFAULT_ACCOUNT_ADDR,
         runtime_args! {
@@ -855,7 +858,10 @@ fn should_allow_whitelisted_account_to_mint() {
         },
     )
     .build();
-    builder.exec(transfer_to_account_2).expect_success().commit();
+    builder
+        .exec(transfer_to_account_2)
+        .expect_success()
+        .commit();
 
     let account_whitelist = vec![account_1_public_key.to_account_hash()];
 
@@ -921,7 +927,6 @@ fn should_allow_whitelisted_account_to_mint() {
         36, // Invalid minter
         "Unlisted account hash should not be permitted to mint",
     );
-
 }
 
 #[test]

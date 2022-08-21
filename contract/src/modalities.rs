@@ -156,9 +156,9 @@ impl TryFrom<u8> for NFTIdentifierMode {
 
 #[repr(u8)]
 pub enum MetadataMutability {
-    Immutable  = 0,
-    Mutable    = 1,
-    Restricted = 2
+    Immutable = 0,
+    Mutable = 1,
+    Restricted = 2,
 }
 
 impl TryFrom<u8> for MetadataMutability {
