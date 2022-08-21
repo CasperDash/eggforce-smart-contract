@@ -339,7 +339,7 @@ fn should_allow_update_for_valid_metadata_based_on_kind(
 }
 
 #[test]
-fn should_update_metadata_for_account_whitelist_in_restricted_mode() {
+fn should_update_metadata_for_metadata_whitelist_in_restricted_mode() {
     let mut builder = InMemoryWasmTestBuilder::default();
     builder.run_genesis(&DEFAULT_RUN_GENESIS_REQUEST).commit();
 
@@ -350,7 +350,11 @@ fn should_update_metadata_for_account_whitelist_in_restricted_mode() {
     let account_1_account_hash = account_1_public_key.to_account_hash();
     let account_2_account_hash = account_2_public_key.to_account_hash();
 
-    let account_whitelist = vec![account_1_public_key.to_account_hash()];
+    let account_whitelist = vec![
+        account_1_public_key.to_account_hash(),
+        account_2_public_key.to_account_hash(),
+    ];
+    let metadata_whitelist = vec![account_1_public_key.to_account_hash()];
 
     let install_request = InstallerRequestBuilder::new(*DEFAULT_ACCOUNT_ADDR, NFT_CONTRACT_WASM)
         .with_total_token_supply(100u64)
@@ -360,6 +364,7 @@ fn should_update_metadata_for_account_whitelist_in_restricted_mode() {
         .with_minting_mode(MintingMode::Installer as u8)
         .with_metadata_mutability(MetadataMutability::Restricted)
         .with_account_whitelist(account_whitelist)
+        .with_metadata_whitelist(metadata_whitelist)
         .build();
     builder.exec(install_request).expect_success().commit();
 
@@ -406,7 +411,7 @@ fn should_update_metadata_for_account_whitelist_in_restricted_mode() {
     let error = builder.get_error().expect("should have an error");
     assert_expected_error(
         error,
-        36, // Invalid minter
+        206,
         "Unlisted account hash should not be permitted to mint",
     );
 

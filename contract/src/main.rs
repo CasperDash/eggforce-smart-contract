@@ -37,19 +37,20 @@ use crate::{
         ACCESS_KEY_NAME, ACCOUNT_WHITELIST, ALLOW_MINTING, ARG_ACCOUNT_WHITELIST,
         ARG_ALLOW_MINTING, ARG_APPROVE_ALL, ARG_BURN_MODE, ARG_COLLECTION_NAME,
         ARG_COLLECTION_SYMBOL, ARG_CONTRACT_WHITELIST, ARG_HOLDER_MODE, ARG_IDENTIFIER_MODE,
-        ARG_JSON_SCHEMA, ARG_METADATA_MUTABILITY, ARG_MINTING_MODE, ARG_NFT_KIND,
-        ARG_NFT_METADATA_KIND, ARG_OPERATOR, ARG_OWNERSHIP_MODE, ARG_RECEIPT_NAME, ARG_SOURCE_KEY,
-        ARG_TARGET_KEY, ARG_TOKEN_META_DATA, ARG_TOKEN_OWNER, ARG_TOTAL_TOKEN_SUPPLY,
-        ARG_WHITELIST_MODE, BURNT_TOKENS, BURN_MODE, COLLECTION_NAME, COLLECTION_SYMBOL,
-        CONTRACT_NAME, CONTRACT_VERSION, CONTRACT_WHITELIST, ENTRY_POINT_APPROVE,
-        ENTRY_POINT_BALANCE_OF, ENTRY_POINT_BURN, ENTRY_POINT_GET_APPROVED, ENTRY_POINT_INIT,
-        ENTRY_POINT_METADATA, ENTRY_POINT_MINT, ENTRY_POINT_OWNER_OF,
+        ARG_JSON_SCHEMA, ARG_METADATA_MUTABILITY, ARG_METADATA_WHITELIST, ARG_MINTING_MODE,
+        ARG_NFT_KIND, ARG_NFT_METADATA_KIND, ARG_OPERATOR, ARG_OWNERSHIP_MODE, ARG_RECEIPT_NAME,
+        ARG_SOURCE_KEY, ARG_TARGET_KEY, ARG_TOKEN_META_DATA, ARG_TOKEN_OWNER,
+        ARG_TOTAL_TOKEN_SUPPLY, ARG_WHITELIST_MODE, BURNT_TOKENS, BURN_MODE, COLLECTION_NAME,
+        COLLECTION_SYMBOL, CONTRACT_NAME, CONTRACT_VERSION, CONTRACT_WHITELIST,
+        ENTRY_POINT_APPROVE, ENTRY_POINT_BALANCE_OF, ENTRY_POINT_BURN, ENTRY_POINT_GET_APPROVED,
+        ENTRY_POINT_INIT, ENTRY_POINT_METADATA, ENTRY_POINT_MINT, ENTRY_POINT_OWNER_OF,
         ENTRY_POINT_SET_APPROVE_FOR_ALL, ENTRY_POINT_SET_TOKEN_METADATA, ENTRY_POINT_SET_VARIABLES,
         ENTRY_POINT_TRANSFER, HASH_KEY_NAME, HOLDER_MODE, IDENTIFIER_MODE, INSTALLER, JSON_SCHEMA,
         METADATA_CEP78, METADATA_CUSTOM_VALIDATED, METADATA_MUTABILITY, METADATA_NFT721,
-        METADATA_RAW, METADATA_SCHEMA, MINTING_MODE, NFT_KIND, NFT_METADATA_KIND,
-        NUMBER_OF_MINTED_TOKENS, OPERATOR, OWNED_TOKENS, OWNERSHIP_MODE, RECEIPT_NAME,
-        TOKEN_COUNTS, TOKEN_ISSUERS, TOKEN_OWNERS, TOTAL_TOKEN_SUPPLY, WHITELIST_MODE,
+        METADATA_RAW, METADATA_SCHEMA, METADATA_WHITELIST, MINTING_MODE, NFT_KIND,
+        NFT_METADATA_KIND, NUMBER_OF_MINTED_TOKENS, OPERATOR, OWNED_TOKENS, OWNERSHIP_MODE,
+        RECEIPT_NAME, TOKEN_COUNTS, TOKEN_ISSUERS, TOKEN_OWNERS, TOTAL_TOKEN_SUPPLY,
+        WHITELIST_MODE,
     },
     error::NFTCoreError,
     metadata::CustomMetadataSchema,
@@ -175,6 +176,13 @@ pub extern "C" fn init() {
     )
     .unwrap_or_revert();
 
+    let metadata_whitelist = utils::get_named_arg_with_user_errors::<Vec<AccountHash>>(
+        ARG_METADATA_WHITELIST,
+        NFTCoreError::MissingMetadataWhiteList,
+        NFTCoreError::InvalidMetadataWhiteList,
+    )
+    .unwrap_or_revert();
+
     let json_schema: String = utils::get_named_arg_with_user_errors(
         ARG_JSON_SCHEMA,
         NFTCoreError::MissingJsonSchema,
@@ -266,6 +274,10 @@ pub extern "C" fn init() {
         ACCOUNT_WHITELIST,
         storage::new_uref(account_whitelist).into(),
     );
+    runtime::put_key(
+        METADATA_WHITELIST,
+        storage::new_uref(metadata_whitelist).into(),
+    );
     runtime::put_key(RECEIPT_NAME, storage::new_uref(receipt_name).into());
     runtime::put_key(
         NFT_METADATA_KIND,
@@ -314,7 +326,7 @@ pub extern "C" fn init() {
 // set variables defines what variables are mutable and immutable.
 #[no_mangle]
 pub extern "C" fn set_variables() {
-    utils::require_valid_accounts();
+    utils::require_permissions(utils::PermissionsMode::Admins);
 
     if let Some(allow_minting) = utils::get_optional_named_arg_with_user_errors::<bool>(
         ARG_ALLOW_MINTING,
@@ -379,6 +391,20 @@ pub extern "C" fn set_variables() {
             WhitelistMode::Locked => runtime::revert(NFTCoreError::InvalidWhitelistMode),
         }
     }
+
+    if let Some(new_metadata_whitelist) =
+        utils::get_optional_named_arg_with_user_errors::<Vec<AccountHash>>(
+            ARG_METADATA_WHITELIST,
+            NFTCoreError::MissingMetadataWhiteList,
+        )
+    {
+        let whitelist_uref = utils::get_uref(
+            METADATA_WHITELIST,
+            NFTCoreError::MissingMetadataWhiteList,
+            NFTCoreError::InvalidMetadataWhiteList,
+        );
+        storage::write(whitelist_uref, new_metadata_whitelist)
+    }
 }
 
 // Mints a new token. Minting will fail if allow_minting is set to false.
@@ -429,7 +455,7 @@ pub extern "C" fn mint() {
 
     // Revert if minting is private and caller is not installer.
     if let MintingMode::Installer = minting_mode {
-        utils::require_valid_accounts_or_contracts();
+        utils::require_permissions(utils::PermissionsMode::Mint)
     }
 
     // The contract's ownership behavior (determined at installation) determines,
@@ -1235,7 +1261,7 @@ pub extern "C" fn set_token_metadata() {
 
     // Restricted mode, only installer, whitelisted accounts, contracts can update metadata
     if let MetadataMutability::Restricted = metadata_mutability {
-        utils::require_valid_accounts_or_contracts();
+        utils::require_permissions(utils::PermissionsMode::Metadata);
     } else if let Some(token_owner_key) = token_owner {
         let caller = utils::get_verified_caller().unwrap_or_revert();
         if caller != token_owner_key {
@@ -1299,6 +1325,10 @@ fn install_nft_contract() -> (ContractHash, ContractVersion) {
                     ARG_ACCOUNT_WHITELIST,
                     CLType::List(Box::new(CLType::ByteArray(32u32))),
                 ),
+                Parameter::new(
+                    ARG_METADATA_WHITELIST,
+                    CLType::List(Box::new(CLType::ByteArray(32u32))),
+                ),
                 Parameter::new(ARG_JSON_SCHEMA, CLType::String),
                 Parameter::new(ARG_RECEIPT_NAME, CLType::String),
                 Parameter::new(ARG_IDENTIFIER_MODE, CLType::U8),
@@ -1328,6 +1358,10 @@ fn install_nft_contract() -> (ContractHash, ContractVersion) {
                 ),
                 Parameter::new(
                     ARG_ACCOUNT_WHITELIST,
+                    CLType::List(Box::new(CLType::ByteArray(32u32))),
+                ),
+                Parameter::new(
+                    ARG_METADATA_WHITELIST,
                     CLType::List(Box::new(CLType::ByteArray(32u32))),
                 ),
             ],
@@ -1594,10 +1628,17 @@ pub extern "C" fn call() {
     )
     .unwrap_or_default();
 
-    // A whitelist of account hashes specifying which contracts can mint
+    // A whitelist of account hashes specifying which accounts as admins
     let account_white_list: Vec<AccountHash> = utils::get_optional_named_arg_with_user_errors(
         ARG_ACCOUNT_WHITELIST,
         NFTCoreError::InvalidAccountWhiteList,
+    )
+    .unwrap_or_default();
+
+    // A whitelist of account hashes specifying which accounts can update metadata
+    let metadata_white_list: Vec<AccountHash> = utils::get_optional_named_arg_with_user_errors(
+        ARG_METADATA_WHITELIST,
+        NFTCoreError::InvalidMetadataWhiteList,
     )
     .unwrap_or_default();
 
@@ -1692,6 +1733,7 @@ pub extern "C" fn call() {
              ARG_WHITELIST_MODE => whitelist_lock,
              ARG_CONTRACT_WHITELIST => contract_white_list,
              ARG_ACCOUNT_WHITELIST => account_white_list,
+             ARG_METADATA_WHITELIST => metadata_white_list,
              ARG_JSON_SCHEMA => json_schema,
              ARG_RECEIPT_NAME => receipt_name,
              ARG_NFT_METADATA_KIND => nft_metadata_kind,

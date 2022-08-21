@@ -21,7 +21,7 @@ build-contract:
 	wasm-strip client/transfer_session/target/wasm32-unknown-unknown/release/transfer_call.wasm
 	wasm-strip test-contracts/minting_contract/target/wasm32-unknown-unknown/release/minting_contract.wasm
 
-prepare-test:
+prepare-test: build-contract
 	mkdir -p tests/wasm
 	cp contract/target/wasm32-unknown-unknown/release/contract.wasm tests/wasm
 	cp client/mint_session/target/wasm32-unknown-unknown/release/mint_call.wasm tests/wasm

@@ -899,7 +899,7 @@ fn should_allow_whitelisted_account_to_mint() {
     let error = builder.get_error().expect("should have an error");
     assert_expected_error(
         error,
-        36, // Invalid minter
+        205,
         "Unlisted account hash should not be permitted to mint",
     );
 }

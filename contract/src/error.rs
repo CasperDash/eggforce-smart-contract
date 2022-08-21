@@ -111,7 +111,11 @@ pub enum NFTCoreError {
     InvalidBurnMode = 106,
     MissingAccountWhiteList = 200,
     InvalidAccountWhiteList = 201,
-    UnlistedAccounttHash = 202,
+    MissingMetadataWhiteList = 202,
+    InvalidMetadataWhiteList = 203,
+    MissingAdminRights = 204,
+    MissingMintRights = 205,
+    MissingMetadataRights = 206,
 }
 
 impl From<NFTCoreError> for ApiError {

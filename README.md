@@ -493,14 +493,15 @@ by using the provided `Makefile` and running the `make test` command.
 
 ## Changes
 
-- account_whitelist
-    - To define accounts (admins) who can perform restricted actions (initialize or set_variables with `account_whitelist`)
+- account_whitelist: To define accounts who can mint
+
+- metadata_whitelist: To define accounts who can set metadata
 
 - Minting::Installer enhanced
     - Only installer or whitelisted accounts can mint new tokens
 
 - MetadataMutability::Restricted (u8:2)
-    - Only installer or whitelisted accounts / contracts can set metadata
+    - Only installer or metadata_whitelist set metadata
 
 ## Example
     
