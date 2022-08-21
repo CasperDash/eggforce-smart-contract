@@ -831,37 +831,12 @@ fn should_allow_whitelisted_account_to_mint() {
     let mut builder = InMemoryWasmTestBuilder::default();
     builder.run_genesis(&DEFAULT_RUN_GENESIS_REQUEST).commit();
 
-    let (_, account_1_public_key) = support::create_dummy_key_pair(ACCOUNT_USER_1);
-    let (_, account_2_public_key) = support::create_dummy_key_pair(ACCOUNT_USER_2);
+    let (_, account_1_public_key) =
+        support::create_dummy_key_pair_with_cspr(&mut builder, ACCOUNT_USER_1);
+    let (_, account_2_public_key) =
+        support::create_dummy_key_pair_with_cspr(&mut builder, ACCOUNT_USER_2);
     let account_1_account_hash = account_1_public_key.to_account_hash();
     let account_2_account_hash = account_2_public_key.to_account_hash();
-
-    let transfer_to_account_1 = ExecuteRequestBuilder::transfer(
-        *DEFAULT_ACCOUNT_ADDR,
-        runtime_args! {
-            mint::ARG_AMOUNT => 100_000_000_000_000u64,
-            mint::ARG_TARGET => account_1_public_key.to_account_hash(),
-            mint::ARG_ID => Option::<u64>::None,
-        },
-    )
-    .build();
-    builder
-        .exec(transfer_to_account_1)
-        .expect_success()
-        .commit();
-    let transfer_to_account_2 = ExecuteRequestBuilder::transfer(
-        *DEFAULT_ACCOUNT_ADDR,
-        runtime_args! {
-            mint::ARG_AMOUNT => 100_000_000_000_000u64,
-            mint::ARG_TARGET => account_2_public_key.to_account_hash(),
-            mint::ARG_ID => Option::<u64>::None,
-        },
-    )
-    .build();
-    builder
-        .exec(transfer_to_account_2)
-        .expect_success()
-        .commit();
 
     let account_whitelist = vec![account_1_public_key.to_account_hash()];
 
