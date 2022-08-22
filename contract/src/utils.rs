@@ -16,15 +16,28 @@ use casper_types::{
     api_error,
     bytesrepr::{self, FromBytes, ToBytes},
     system::CallStackElement,
-    ApiError, CLTyped, ContractHash, Key, URef,
+    ApiError, CLTyped, ContractHash, Key, KeyTag, Tagged, URef,
 };
 
 use crate::{
-    constants::{ARG_TOKEN_HASH, ARG_TOKEN_ID, HOLDER_MODE, OWNED_TOKENS, OWNERSHIP_MODE},
+    constants::{
+        ACCOUNT_WHITELIST, ARG_TOKEN_HASH, ARG_TOKEN_ID, CONTRACT_WHITELIST, HOLDER_MODE,
+        INSTALLER, METADATA_WHITELIST, OWNED_TOKENS, OWNERSHIP_MODE,
+    },
     error::NFTCoreError,
     modalities::{NFTHolderMode, NFTIdentifierMode, OwnershipMode, TokenIdentifier},
     BurnMode, BURNT_TOKENS, BURN_MODE,
 };
+
+#[repr(u8)]
+pub enum PermissionsMode {
+    /// Installer
+    Admins = 0,
+    // Installer, whitelisted accounts or contracts
+    Mint = 1,
+    /// Installer, whitelisted accounts, contracts or whitelisted metadata
+    Metadata = 2,
+}
 
 pub(crate) fn upsert_dictionary_value_from_key<T: CLTyped + FromBytes + ToBytes>(
     dictionary_name: &str,
@@ -293,6 +306,21 @@ pub(crate) fn get_verified_caller() -> Result<Key, NFTCoreError> {
     }
 }
 
+pub(crate) fn get_caller() -> Result<Key, NFTCoreError> {
+    match *runtime::get_call_stack()
+        .iter()
+        .nth_back(1)
+        .to_owned()
+        .unwrap_or_revert()
+    {
+        CallStackElement::Session {
+            account_hash: calling_account_hash,
+        } => Ok(Key::Account(calling_account_hash)),
+        CallStackElement::StoredSession { contract_hash, .. }
+        | CallStackElement::StoredContract { contract_hash, .. } => Ok(contract_hash.into()),
+    }
+}
+
 pub(crate) fn get_token_identifier_from_runtime_args(
     identifier_mode: &NFTIdentifierMode,
 ) -> TokenIdentifier {
@@ -389,4 +417,61 @@ pub(crate) fn get_burn_mode() -> BurnMode {
 pub(crate) fn is_token_burned(token_identifier: &TokenIdentifier) -> bool {
     get_dictionary_value_from_key::<()>(BURNT_TOKENS, &token_identifier.get_dictionary_item_key())
         .is_some()
+}
+
+pub(crate) fn require_permissions(mode: PermissionsMode) {
+    let caller = get_caller().unwrap_or_revert();
+    match caller.tag() {
+        KeyTag::Hash => {
+            let calling_contract = caller
+                .into_hash()
+                .map(ContractHash::new)
+                .unwrap_or_revert_with(NFTCoreError::InvalidKey);
+            let contract_whitelist = get_stored_value_with_user_errors::<Vec<ContractHash>>(
+                CONTRACT_WHITELIST,
+                NFTCoreError::MissingContractWhiteList,
+                NFTCoreError::InvalidContractWhitelist,
+            );
+            // Revert if the calling contract is not in the whitelist.
+            if !contract_whitelist.contains(&calling_contract) {
+                runtime::revert(NFTCoreError::UnlistedContractHash)
+            }
+        }
+        KeyTag::Account => {
+            // Installer or admins can do anything
+            let installer = get_account_hash(
+                INSTALLER,
+                NFTCoreError::MissingInstaller,
+                NFTCoreError::InvalidInstaller,
+            );
+
+            let caller_account = runtime::get_caller();
+            if installer != caller_account {
+                if let PermissionsMode::Admins = mode {
+                    runtime::revert(NFTCoreError::MissingAdminRights)
+                } else if let PermissionsMode::Mint = mode {
+                    let account_whitelist = get_stored_value_with_user_errors::<Vec<AccountHash>>(
+                        ACCOUNT_WHITELIST,
+                        NFTCoreError::MissingAccountWhiteList,
+                        NFTCoreError::InvalidAccountWhiteList,
+                    );
+                    if !account_whitelist.contains(&caller_account) {
+                        runtime::revert(NFTCoreError::MissingMintRights)
+                    }
+                } else if let PermissionsMode::Metadata = mode {
+                    let metadata_accounts = get_stored_value_with_user_errors::<Vec<AccountHash>>(
+                        METADATA_WHITELIST,
+                        NFTCoreError::MissingMetadataWhiteList,
+                        NFTCoreError::InvalidMetadataWhiteList,
+                    );
+                    if !metadata_accounts.contains(&caller_account) {
+                        runtime::revert(NFTCoreError::MissingMetadataRights)
+                    }
+                } else {
+                    runtime::revert(NFTCoreError::InvalidKey)
+                }
+            }
+        }
+        _ => runtime::revert(NFTCoreError::InvalidKey),
+    }
 }
