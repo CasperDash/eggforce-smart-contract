@@ -22,8 +22,8 @@ use alloc::{
 use core::convert::TryInto;
 
 use casper_types::{
-    contracts::NamedKeys, runtime_args, CLType, CLValue, ContractHash, ContractPackageHash,
-    ContractVersion, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Key, KeyTag,
+    account::AccountHash, contracts::NamedKeys, runtime_args, CLType, CLValue, ContractHash, ContractPackageHash,
+    ContractVersion, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Key,
     Parameter, RuntimeArgs, Tagged,
 };
 

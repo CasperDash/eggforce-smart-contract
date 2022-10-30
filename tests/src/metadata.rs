@@ -13,6 +13,7 @@ use crate::utility::{
         MINT_SESSION_WASM, NFT_CONTRACT_WASM, TEST_PRETTY_721_META_DATA,
         TEST_PRETTY_CEP78_METADATA, TEST_PRETTY_UPDATED_721_META_DATA,
         TEST_PRETTY_UPDATED_CEP78_METADATA, TOKEN_OWNERS,
+        ACCOUNT_USER_1, ACCOUNT_USER_2
     },
     installer_request_builder::{
         InstallerRequestBuilder, MetadataMutability, MintingMode, NFTHolderMode, NFTIdentifierMode,
