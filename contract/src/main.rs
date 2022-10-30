@@ -22,9 +22,9 @@ use alloc::{
 use core::convert::TryInto;
 
 use casper_types::{
-    account::AccountHash, contracts::NamedKeys, runtime_args, CLType, CLValue, ContractHash,
-    ContractPackageHash, ContractVersion, EntryPoint, EntryPointAccess, EntryPointType,
-    EntryPoints, Key, Parameter, RuntimeArgs,
+    account::AccountHash, contracts::NamedKeys, runtime_args, CLType, CLValue, ContractHash, ContractPackageHash,
+    ContractVersion, EntryPoint, EntryPointAccess, EntryPointType, EntryPoints, Key, KeyTag,
+    Parameter, RuntimeArgs,
 };
 
 use casper_contract::{
@@ -34,10 +34,9 @@ use casper_contract::{
 
 use crate::{
     constants::{
-        ACCESS_KEY_NAME, ACCOUNT_WHITELIST, ALLOW_MINTING, ARG_ACCOUNT_WHITELIST,
-        ARG_ALLOW_MINTING, ARG_APPROVE_ALL, ARG_BURN_MODE, ARG_COLLECTION_NAME,
-        ARG_COLLECTION_SYMBOL, ARG_CONTRACT_WHITELIST, ARG_HOLDER_MODE, ARG_IDENTIFIER_MODE,
-        ARG_JSON_SCHEMA, ARG_METADATA_MUTABILITY, ARG_METADATA_WHITELIST, ARG_MINTING_MODE,
+        ACCESS_KEY_NAME, ALLOW_MINTING, ARG_ALLOW_MINTING, ARG_APPROVE_ALL, ARG_BURN_MODE,
+        ARG_COLLECTION_NAME, ARG_COLLECTION_SYMBOL, ARG_CONTRACT_WHITELIST, ARG_HOLDER_MODE,
+        ARG_IDENTIFIER_MODE, ARG_JSON_SCHEMA, ARG_METADATA_MUTABILITY, ARG_MINTING_MODE,
         ARG_NFT_KIND, ARG_NFT_METADATA_KIND, ARG_OPERATOR, ARG_OWNERSHIP_MODE, ARG_RECEIPT_NAME,
         ARG_SOURCE_KEY, ARG_TARGET_KEY, ARG_TOKEN_META_DATA, ARG_TOKEN_OWNER,
         ARG_TOTAL_TOKEN_SUPPLY, ARG_WHITELIST_MODE, BURNT_TOKENS, BURN_MODE, COLLECTION_NAME,
@@ -47,10 +46,10 @@ use crate::{
         ENTRY_POINT_SET_APPROVE_FOR_ALL, ENTRY_POINT_SET_TOKEN_METADATA, ENTRY_POINT_SET_VARIABLES,
         ENTRY_POINT_TRANSFER, HASH_KEY_NAME, HOLDER_MODE, IDENTIFIER_MODE, INSTALLER, JSON_SCHEMA,
         METADATA_CEP78, METADATA_CUSTOM_VALIDATED, METADATA_MUTABILITY, METADATA_NFT721,
-        METADATA_RAW, METADATA_SCHEMA, METADATA_WHITELIST, MINTING_MODE, NFT_KIND,
-        NFT_METADATA_KIND, NUMBER_OF_MINTED_TOKENS, OPERATOR, OWNED_TOKENS, OWNERSHIP_MODE,
-        RECEIPT_NAME, TOKEN_COUNTS, TOKEN_ISSUERS, TOKEN_OWNERS, TOTAL_TOKEN_SUPPLY,
-        WHITELIST_MODE,
+        METADATA_RAW, MINTING_MODE, NFT_KIND, NFT_METADATA_KIND, NUMBER_OF_MINTED_TOKENS, OPERATOR,
+        OWNED_TOKENS, OWNERSHIP_MODE, RECEIPT_NAME, TOKEN_COUNTS, TOKEN_ISSUERS, TOKEN_OWNERS,
+        TOTAL_TOKEN_SUPPLY, WHITELIST_MODE,
+        ACCOUNT_WHITELIST, ARG_ACCOUNT_WHITELIST, METADATA_WHITELIST, ARG_METADATA_WHITELIST
     },
     error::NFTCoreError,
     metadata::CustomMetadataSchema,
@@ -163,8 +162,8 @@ pub extern "C" fn init() {
     .unwrap_or_revert();
 
     if WhitelistMode::Locked == whitelist_mode
-        && NFTHolderMode::Accounts != holder_mode
         && contract_whitelist.is_empty()
+        && NFTHolderMode::Accounts != holder_mode
     {
         runtime::revert(NFTCoreError::EmptyContractWhitelist)
     }
@@ -1163,7 +1162,7 @@ pub extern "C" fn metadata() {
     }
 
     let metadata_kind: NFTMetadataKind = utils::get_stored_value_with_user_errors::<u8>(
-        METADATA_SCHEMA,
+        NFT_METADATA_KIND,
         NFTCoreError::MissingNFTMetadataKind,
         NFTCoreError::InvalidNFTMetadataKind,
     )
