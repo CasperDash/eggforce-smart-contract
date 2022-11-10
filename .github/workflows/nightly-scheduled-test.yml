@@ -22,17 +22,9 @@ jobs:
 
       - name: Setup
         run: make prepare
+      
+      - name: Run build-contracts
+        run: make build-contract
 
       - name: Run tests
-        run: make test
-
-      - name: Slack Notification
-        uses: ravsamhq/notify-slack-action@4ed28566c2bdcdaee6dca2b46b9666d01b4ed8a4 #v1.10.0
-        if: always()
-        with:
-          status: ${{ job.status }}
-          notification_title: "*{repo}*"
-          message_format: "{emoji} *{workflow}* *{status_message}* in <{repo_url}|{repo}@{branch}> on <{commit_url}|{commit_sha}>"
-          footer: "<{run_url}|View Run>"
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: make prepare-test test

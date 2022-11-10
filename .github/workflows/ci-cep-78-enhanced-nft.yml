@@ -39,5 +39,8 @@ jobs:
       - name: Run clippy and fmt
         run: make check-lint
 
+      - name: Run build-contracts
+        run: make build-contract
+
       - name: Run tests
-        run: make test
+        run: make prepare-test test
