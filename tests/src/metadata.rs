@@ -6,14 +6,13 @@ use casper_types::{account::AccountHash, runtime_args, ContractHash, Key, Runtim
 
 use crate::utility::{
     constants::{
-        ARG_CONTRACT_WHITELIST, ARG_NFT_CONTRACT_HASH, ARG_TOKEN_HASH, ARG_TOKEN_ID,
-        ARG_TOKEN_META_DATA, ARG_TOKEN_OWNER, ENTRY_POINT_METADATA, ENTRY_POINT_MINT,
-        ENTRY_POINT_SET_TOKEN_METADATA, MALFORMED_META_DATA, METADATA_CEP78,
+        ACCOUNT_USER_1, ACCOUNT_USER_2, ARG_CONTRACT_WHITELIST, ARG_NFT_CONTRACT_HASH,
+        ARG_TOKEN_HASH, ARG_TOKEN_ID, ARG_TOKEN_META_DATA, ARG_TOKEN_OWNER, ENTRY_POINT_METADATA,
+        ENTRY_POINT_MINT, ENTRY_POINT_SET_TOKEN_METADATA, MALFORMED_META_DATA, METADATA_CEP78,
         METADATA_CUSTOM_VALIDATED, METADATA_NFT721, METADATA_RAW, MINTING_CONTRACT_WASM,
         MINT_SESSION_WASM, NFT_CONTRACT_WASM, TEST_PRETTY_721_META_DATA,
         TEST_PRETTY_CEP78_METADATA, TEST_PRETTY_UPDATED_721_META_DATA,
         TEST_PRETTY_UPDATED_CEP78_METADATA, TOKEN_OWNERS,
-        ACCOUNT_USER_1, ACCOUNT_USER_2
     },
     installer_request_builder::{
         InstallerRequestBuilder, MetadataMutability, MintingMode, NFTHolderMode, NFTIdentifierMode,
@@ -56,7 +55,7 @@ fn should_prevent_update_in_immutable_mode() {
     builder.exec(mint_token_request).expect_success().commit();
 
     let token_hash: String =
-        base16::encode_lower(&support::create_blake2b_hash(&TEST_PRETTY_721_META_DATA));
+        base16::encode_lower(&support::create_blake2b_hash(TEST_PRETTY_721_META_DATA));
 
     let update_token_metadata_request = ExecuteRequestBuilder::contract_call_by_hash(
         *DEFAULT_ACCOUNT_ADDR,
