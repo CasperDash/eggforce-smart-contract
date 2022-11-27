@@ -27,4 +27,4 @@ jobs:
         run: make build-contract
 
       - name: Run tests
-        run: make prepare-test test
+        run: make setup-test test
