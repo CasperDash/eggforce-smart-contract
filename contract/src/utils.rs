@@ -312,21 +312,6 @@ pub(crate) fn get_verified_caller() -> Result<Key, NFTCoreError> {
     }
 }
 
-pub(crate) fn get_caller() -> Result<Key, NFTCoreError> {
-    match *runtime::get_call_stack()
-        .iter()
-        .nth_back(1)
-        .to_owned()
-        .unwrap_or_revert()
-    {
-        CallStackElement::Session {
-            account_hash: calling_account_hash,
-        } => Ok(Key::Account(calling_account_hash)),
-        CallStackElement::StoredSession { contract_hash, .. }
-        | CallStackElement::StoredContract { contract_hash, .. } => Ok(contract_hash.into()),
-    }
-}
-
 pub(crate) fn get_token_identifier_from_runtime_args(
     identifier_mode: &NFTIdentifierMode,
 ) -> TokenIdentifier {
@@ -393,7 +378,7 @@ pub(crate) fn is_token_burned(token_identifier: &TokenIdentifier) -> bool {
 }
 
 pub(crate) fn require_permissions(mode: PermissionsMode) {
-    let caller = get_caller().unwrap_or_revert();
+    let caller = get_verified_caller().unwrap_or_revert();
     match caller.tag() {
         KeyTag::Hash => {
             let calling_contract = caller
@@ -411,12 +396,10 @@ pub(crate) fn require_permissions(mode: PermissionsMode) {
             }
         }
         KeyTag::Account => {
-            // Installer or admins can do anything
-            let installer = get_account_hash(
-                INSTALLER,
-                NFTCoreError::MissingInstaller,
-                NFTCoreError::InvalidInstaller,
-            );
+            let installer = runtime::get_key(INSTALLER)
+                .unwrap_or_revert_with(NFTCoreError::MissingInstallerKey)
+                .into_account()
+                .unwrap_or_revert_with(NFTCoreError::FailedToConvertToAccountHash);
 
             let caller_account = runtime::get_caller();
             if installer != caller_account {
@@ -544,7 +527,8 @@ pub(crate) fn get_token_index(token_identifier: &TokenIdentifier) -> u64 {
 }
 
 pub(crate) fn migrate_owned_tokens_in_ordinal_mode() {
-    runtime::print("migrating owned tokens");
+    // runtime::print("migrating owned tokens");
+    
     let current_number_of_minted_tokens = utils::get_stored_value_with_user_errors::<u64>(
         NUMBER_OF_MINTED_TOKENS,
         NFTCoreError::MissingTotalTokenSupply,
@@ -575,7 +559,7 @@ pub(crate) fn migrate_owned_tokens_in_ordinal_mode() {
                 &token_owner_item_key,
             )
             .unwrap_or_revert();
-            runtime::print("Got list");
+            // runtime::print("Got list");
             for token_identifier in owned_tokens_list.into_iter() {
                 let token_id = token_identifier.get_index().unwrap_or_revert();
                 let page_number = token_id / PAGE_SIZE;
@@ -695,7 +679,7 @@ pub(crate) fn migrate_token_hashes(token_owner: Key) {
             None => vec![false; PAGE_SIZE as usize],
         };
         let _ = core::mem::replace(&mut page[page_address as usize], true);
-        runtime::print(&format!("{:?}", page.clone()));
+        // runtime::print(&format!("{:?}", page.clone()));
         storage::dictionary_put(page_uref, &page_item_key, page);
         insert_hash_id_lookups(unmatched_hash_count - 1, token_identifier);
         unmatched_hash_count -= 1;
