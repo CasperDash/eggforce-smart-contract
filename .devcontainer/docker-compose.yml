@@ -2,11 +2,11 @@ version: '3.8'
 
 services:
   app:
-    container_name: app-dev-container
+    container_name: app
     build: 
       context: .
       dockerfile: Dockerfile
-    hostname: eggforce-sc-dev.local
+    hostname: eggforce-sc-cep78.local
     working_dir: /workspace
     volumes:
       - ..:/workspace

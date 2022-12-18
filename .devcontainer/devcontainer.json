@@ -16,5 +16,5 @@
     },
     "postCreateCommand": "make prepare",
     "shutdownAction": "stopCompose",
-    "remoteUser": "root"
+    "remoteUser": "vscode"
 }
