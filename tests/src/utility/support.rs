@@ -26,6 +26,8 @@ use casper_types::{
     system::mint,
     ApiError, CLTyped, CLValueError, ContractHash, ContractPackageHash, Key, PublicKey,
     RuntimeArgs, SecretKey, URef, BLAKE2B_DIGEST_LENGTH,
+    account::AccountHash, bytesrepr::FromBytes, ApiError, CLTyped, CLValueError, ContractHash,
+    ContractPackageHash, Key, PublicKey, RuntimeArgs, SecretKey, URef, BLAKE2B_DIGEST_LENGTH,
 };
 
 pub(crate) fn get_nft_contract_hash(
@@ -234,16 +236,12 @@ impl CEP78Metadata {
     }
 }
 
-pub(crate) fn make_page_dictionary_item_key(
-    token_owner_key: &Key,
-    current_page_number: u64,
-) -> String {
-    let mut preimage = Vec::new();
-    preimage.append(&mut token_owner_key.clone().to_bytes().unwrap());
-    preimage.append(&mut current_page_number.to_bytes().unwrap());
-
-    let key_bytes = create_blake2b_hash(preimage);
-    base16::encode_lower(&key_bytes)
+fn make_page_dictionary_item_key(token_owner_key: &Key) -> String {
+    match token_owner_key {
+        Key::Account(token_owner_account_hash) => token_owner_account_hash.to_string(),
+        Key::Hash(token_owner_hash_addr) => ContractHash::new(*token_owner_hash_addr).to_string(),
+        _ => panic!("invalid key type"),
+    }
 }
 
 pub(crate) fn get_token_page_by_id(
@@ -253,7 +251,7 @@ pub(crate) fn get_token_page_by_id(
     token_id: u64,
 ) -> Vec<bool> {
     let page_number = token_id / PAGE_SIZE;
-    let token_page_item_key = make_page_dictionary_item_key(token_owner_key, page_number);
+    let token_page_item_key = make_page_dictionary_item_key(token_owner_key);
     get_dictionary_value_from_key(
         builder,
         nft_contract_key,
@@ -288,5 +286,5 @@ pub(crate) fn get_stored_value_from_global_state<T: CLTyped + FromBytes>(
 }
 
 pub(crate) fn get_receipt_name(nft_receipt: String, page_table_entry: u64) -> String {
-    format!("{}-m-{}-p-{}", nft_receipt, PAGE_SIZE, page_table_entry)
+    format!("{}_m_{}_p_{}", nft_receipt, PAGE_SIZE, page_table_entry)
 }
