@@ -20,6 +20,12 @@ use casper_execution_engine::{
     storage::global_state::in_memory::InMemoryGlobalState,
 };
 use casper_types::{
+    account::AccountHash,
+    bytesrepr::{FromBytes, ToBytes},
+    runtime_args,
+    system::mint,
+    ApiError, CLTyped, CLValueError, ContractHash, ContractPackageHash, Key, PublicKey,
+    RuntimeArgs, SecretKey, URef, BLAKE2B_DIGEST_LENGTH,
     account::AccountHash, bytesrepr::FromBytes, ApiError, CLTyped, CLValueError, ContractHash,
     ContractPackageHash, Key, PublicKey, RuntimeArgs, SecretKey, URef, BLAKE2B_DIGEST_LENGTH,
 };
@@ -98,6 +104,27 @@ pub(crate) fn create_dummy_key_pair(account_string: [u8; 32]) -> (SecretKey, Pub
         SecretKey::ed25519_from_bytes(account_string).expect("failed to create secret key");
     let public_key = PublicKey::from(&secrete_key);
     (secrete_key, public_key)
+}
+
+pub(crate) fn create_dummy_key_pair_with_cspr(
+    builder: &mut InMemoryWasmTestBuilder,
+    account_string: [u8; 32],
+) -> (SecretKey, PublicKey) {
+    let (secret_key, public_key) = create_dummy_key_pair(account_string);
+
+    let transfer_request = ExecuteRequestBuilder::transfer(
+        *DEFAULT_ACCOUNT_ADDR,
+        runtime_args! {
+            mint::ARG_AMOUNT => 100_000_000_000_000u64,
+            mint::ARG_TARGET => public_key.to_account_hash(),
+            mint::ARG_ID => Option::<u64>::None,
+        },
+    )
+    .build();
+
+    builder.exec(transfer_request).expect_success().commit();
+
+    (secret_key, public_key)
 }
 
 pub(crate) fn assert_expected_invalid_installer_request(

@@ -17,12 +17,13 @@ use casper_types::{
     api_error,
     bytesrepr::{self, FromBytes, ToBytes},
     system::CallStackElement,
-    ApiError, CLTyped, ContractHash, Key, URef,
+    ApiError, CLTyped, ContractHash, Key, KeyTag, Tagged, URef,
 };
 
 use crate::{
     constants::{
-        ARG_TOKEN_HASH, ARG_TOKEN_ID, HOLDER_MODE, OWNERSHIP_MODE, PAGE_DICTIONARY_PREFIX,
+        ACCOUNT_WHITELIST, ARG_TOKEN_HASH, ARG_TOKEN_ID, CONTRACT_WHITELIST, HOLDER_MODE,
+        INSTALLER, METADATA_WHITELIST, OWNED_TOKENS, OWNERSHIP_MODE, PAGE_DICTIONARY_PREFIX,
         PAGE_LIMIT, RECEIPT_NAME, REPORTING_MODE,
     },
     error::NFTCoreError,
@@ -30,9 +31,18 @@ use crate::{
         NFTHolderMode, NFTIdentifierMode, OwnerReverseLookupMode, OwnershipMode, TokenIdentifier,
     },
     utils, BurnMode, BURNT_TOKENS, BURN_MODE, HASH_BY_INDEX, IDENTIFIER_MODE, INDEX_BY_HASH,
-    NUMBER_OF_MINTED_TOKENS, OWNED_TOKENS, PAGE_TABLE, TOKEN_OWNERS, UNMATCHED_HASH_COUNT,
+    NUMBER_OF_MINTED_TOKENS, PAGE_TABLE, TOKEN_OWNERS, UNMATCHED_HASH_COUNT,
 };
 
+#[repr(u8)]
+pub enum PermissionsMode {
+    /// Installer
+    Admins = 0,
+    // Installer, whitelisted accounts or contracts
+    Mint = 1,
+    /// Installer, whitelisted accounts, contracts or whitelisted metadata
+    Metadata = 2,
+}
 // The size of a given page, it is currently set to 10
 // to ease the math around addressing newly minted tokens.
 pub const PAGE_SIZE: u64 = 1000;
@@ -369,6 +379,60 @@ pub(crate) fn is_token_burned(token_identifier: &TokenIdentifier) -> bool {
         .is_some()
 }
 
+pub(crate) fn require_permissions(mode: PermissionsMode) {
+    let caller = get_verified_caller().unwrap_or_revert();
+    match caller.tag() {
+        KeyTag::Hash => {
+            let calling_contract = caller
+                .into_hash()
+                .map(ContractHash::new)
+                .unwrap_or_revert_with(NFTCoreError::InvalidKey);
+            let contract_whitelist = get_stored_value_with_user_errors::<Vec<ContractHash>>(
+                CONTRACT_WHITELIST,
+                NFTCoreError::MissingContractWhiteList,
+                NFTCoreError::InvalidContractWhitelist,
+            );
+            // Revert if the calling contract is not in the whitelist.
+            if !contract_whitelist.contains(&calling_contract) {
+                runtime::revert(NFTCoreError::UnlistedContractHash)
+            }
+        }
+        KeyTag::Account => {
+            let installer = runtime::get_key(INSTALLER)
+                .unwrap_or_revert_with(NFTCoreError::MissingInstallerKey)
+                .into_account()
+                .unwrap_or_revert_with(NFTCoreError::FailedToConvertToAccountHash);
+
+            let caller_account = runtime::get_caller();
+            if installer != caller_account {
+                if let PermissionsMode::Admins = mode {
+                    runtime::revert(NFTCoreError::MissingAdminRights)
+                } else if let PermissionsMode::Mint = mode {
+                    let account_whitelist = get_stored_value_with_user_errors::<Vec<AccountHash>>(
+                        ACCOUNT_WHITELIST,
+                        NFTCoreError::MissingAccountWhiteList,
+                        NFTCoreError::InvalidAccountWhiteList,
+                    );
+                    if !account_whitelist.contains(&caller_account) {
+                        runtime::revert(NFTCoreError::MissingMintRights)
+                    }
+                } else if let PermissionsMode::Metadata = mode {
+                    let metadata_accounts = get_stored_value_with_user_errors::<Vec<AccountHash>>(
+                        METADATA_WHITELIST,
+                        NFTCoreError::MissingMetadataWhiteList,
+                        NFTCoreError::InvalidMetadataWhiteList,
+                    );
+                    if !metadata_accounts.contains(&caller_account) {
+                        runtime::revert(NFTCoreError::MissingMetadataRights)
+                    }
+                } else {
+                    runtime::revert(NFTCoreError::InvalidKey)
+                }
+            }
+        }
+        _ => runtime::revert(NFTCoreError::InvalidKey),
+    }
+}
 pub(crate) fn max_number_of_pages(total_token_supply: u64) -> u64 {
     if total_token_supply < PAGE_SIZE {
         let dictionary_name = format!("{}{}", PAGE_DICTIONARY_PREFIX, 0);
@@ -379,7 +443,7 @@ pub(crate) fn max_number_of_pages(total_token_supply: u64) -> u64 {
         let max_number_of_pages = total_token_supply / PAGE_SIZE;
         let overflow = total_token_supply % PAGE_SIZE;
         for page_number in 0..max_number_of_pages {
-            let dictionary_name = format!("{}{}", PAGE_DICTIONARY_PREFIX, page_number);
+            let dictionary_name = format!("{PAGE_DICTIONARY_PREFIX}{page_number}");
             storage::new_dictionary(&dictionary_name)
                 .unwrap_or_revert_with(NFTCoreError::FailedToCreateDictionary);
         }
@@ -505,7 +569,7 @@ pub(crate) fn migrate_owned_tokens_in_ordinal_mode() {
                     None => vec![false; page_table_width as usize],
                 };
                 let page_uref = get_uref(
-                    &format!("{}{}", PAGE_DICTIONARY_PREFIX, page_number),
+                    &format!("{PAGE_DICTIONARY_PREFIX}{page_number}"),
                     NFTCoreError::MissingStorageUref,
                     NFTCoreError::InvalidStorageUref,
                 );
@@ -600,7 +664,7 @@ pub(crate) fn migrate_token_hashes(token_owner: Key) {
         let _ = core::mem::replace(&mut page_table[page_table_entry as usize], true);
         storage::dictionary_put(page_table_uref, &token_owner_item_key, page_table);
         let page_uref = get_uref(
-            &format!("{}{}", PAGE_DICTIONARY_PREFIX, page_table_entry),
+            &format!("{PAGE_DICTIONARY_PREFIX}{page_table_entry}"),
             NFTCoreError::MissingStorageUref,
             NFTCoreError::InvalidStorageUref,
         );
@@ -691,7 +755,7 @@ pub(crate) fn get_owned_token_ids_by_page() -> Vec<TokenIdentifier> {
             continue;
         }
         let page_uref = get_uref(
-            &format!("{}{}", PAGE_DICTIONARY_PREFIX, page_table_entry),
+            &format!("{PAGE_DICTIONARY_PREFIX}{page_table_entry}"),
             NFTCoreError::MissingStorageUref,
             NFTCoreError::InvalidStorageUref,
         );
@@ -726,7 +790,7 @@ pub(crate) fn get_receipt_name(page_table_entry: u64) -> String {
         NFTCoreError::MissingReceiptName,
         NFTCoreError::InvalidReceiptName,
     );
-    format!("{}_m_{}_p_{}", receipt, PAGE_SIZE, page_table_entry)
+    format!("{receipt}_m_{PAGE_SIZE}_p_{page_table_entry}")
 }
 
 pub(crate) fn get_reporting_mode() -> OwnerReverseLookupMode {

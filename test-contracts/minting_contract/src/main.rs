@@ -6,7 +6,7 @@ compile_error!("target arch should be wasm32: compile with '--target wasm32-unkn
 
 extern crate alloc;
 
-use alloc::{vec, string::{String, ToString}, format};
+use alloc::{vec, string::{String, ToString}};
 
 use casper_contract::contract_api::{runtime, storage};
 use casper_types::{CLType, ContractHash, ContractVersion, EntryPoint, EntryPointAccess, EntryPoints, EntryPointType, Key, Parameter, runtime_args, RuntimeArgs, URef};

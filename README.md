@@ -730,3 +730,23 @@ If it is set to `Hash`, you will need to reference the `HASH_BY_INDEX` dictionar
 |  135  | InvalidCep78InvalidHash           |
 |  136  | InvalidPackageHashName            |
 |  137  | InvalidAccessKeyName              |
+
+# Customized
+
+## Changes
+
+- account_whitelist: To define accounts who can mint
+
+- metadata_whitelist: To define accounts who can set metadata
+
+- Minting::Installer enhanced
+    - Only installer or whitelisted accounts can mint new tokens
+
+- MetadataMutability::Restricted (u8:2)
+    - Only installer or metadata_whitelist set metadata
+
+## Example
+    
+```bash
+casper-client put-deploy -n http://localhost:11101/rpc --chain-name "casper-net-1" --payment-amount 500000000000 -k ~/casper/casper-node/utils/nctl/assets/net-1/nodes/node-1/keys/secret_key.pem --session-path ~/casper/enhanced-nft/contract/target/wasm32-unknown-unknown/release/contract.wasm --session-arg "collection_name:string='enhanced-nft-1'" --session-arg "collection_symbol:string='ENFT-1'" --session-arg "total_token_supply:u256='10'" --session-arg "ownership_mode:u8='2'" --session-arg "nft_kind:u8='1'" --session-arg "nft_holder_mode:u8='2'" --session-arg "minting_mode:u8='0'" --session-arg "nft_metadata_kind:u8='2'" --session-arg "identifier_mode:u8='0'" --session-arg "metadata_mutability:u8='2'"
+```

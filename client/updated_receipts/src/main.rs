@@ -6,7 +6,6 @@ compile_error!("target arch should be wasm32: compile with '--target wasm32-unkn
 
 extern crate alloc;
 
-use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use casper_contract::contract_api::runtime;
@@ -15,8 +14,6 @@ use casper_types;
 use casper_types::{ContractPackageHash, Key, runtime_args, RuntimeArgs};
 
 const ENTRY_POINT_UPDATE_RECEIPTS: &str = "updated_receipts";
-
-const ARG_COLLECTION_NAME: &str = "collection_name";
 const ARG_NFT_PACKAGE_HASH: &str = "nft_package_hash";
 
 #[no_mangle]

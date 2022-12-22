@@ -6,6 +6,9 @@ use casper_types::{account::AccountHash, runtime_args, ContractHash, Key, Runtim
 
 use crate::utility::{
     constants::{
+        ACCOUNT_USER_1, ACCOUNT_USER_2, ARG_CONTRACT_WHITELIST, ARG_NFT_CONTRACT_HASH,
+        ARG_TOKEN_HASH, ARG_TOKEN_ID, ARG_TOKEN_META_DATA, ARG_TOKEN_OWNER, ENTRY_POINT_METADATA,
+        ENTRY_POINT_MINT, ENTRY_POINT_SET_TOKEN_METADATA, MALFORMED_META_DATA, METADATA_CEP78,
         ARG_COLLECTION_NAME, ARG_CONTRACT_WHITELIST, ARG_NFT_CONTRACT_HASH, ARG_TOKEN_HASH,
         ARG_TOKEN_ID, ARG_TOKEN_META_DATA, ARG_TOKEN_OWNER, ENTRY_POINT_METADATA, ENTRY_POINT_MINT,
         ENTRY_POINT_SET_TOKEN_METADATA, MALFORMED_META_DATA, METADATA_CEP78,
@@ -57,7 +60,7 @@ fn should_prevent_update_in_immutable_mode() {
     builder.exec(mint_token_request).expect_success().commit();
 
     let token_hash: String =
-        base16::encode_lower(&support::create_blake2b_hash(&TEST_PRETTY_721_META_DATA));
+        base16::encode_lower(&support::create_blake2b_hash(TEST_PRETTY_721_META_DATA));
 
     let update_token_metadata_request = ExecuteRequestBuilder::contract_call_by_hash(
         *DEFAULT_ACCOUNT_ADDR,
@@ -345,6 +348,109 @@ fn should_allow_update_for_valid_metadata_based_on_kind(
     };
 
     assert_eq!(actual_updated_metadata, updated_metadata.to_string())
+}
+
+#[test]
+fn should_update_metadata_for_metadata_whitelist_in_restricted_mode() {
+    let mut builder = InMemoryWasmTestBuilder::default();
+    builder.run_genesis(&DEFAULT_RUN_GENESIS_REQUEST).commit();
+
+    let (_, account_1_public_key) =
+        support::create_dummy_key_pair_with_cspr(&mut builder, ACCOUNT_USER_1);
+    let (_, account_2_public_key) =
+        support::create_dummy_key_pair_with_cspr(&mut builder, ACCOUNT_USER_2);
+    let account_1_account_hash = account_1_public_key.to_account_hash();
+    let account_2_account_hash = account_2_public_key.to_account_hash();
+
+    let account_whitelist = vec![
+        account_1_public_key.to_account_hash(),
+        account_2_public_key.to_account_hash(),
+    ];
+    let metadata_whitelist = vec![account_1_public_key.to_account_hash()];
+
+    let install_request = InstallerRequestBuilder::new(*DEFAULT_ACCOUNT_ADDR, NFT_CONTRACT_WASM)
+        .with_total_token_supply(100u64)
+        .with_holder_mode(NFTHolderMode::Mixed)
+        .with_whitelist_mode(WhitelistMode::Unlocked)
+        .with_ownership_mode(OwnershipMode::Transferable)
+        .with_minting_mode(MintingMode::Installer as u8)
+        .with_metadata_mutability(MetadataMutability::Restricted)
+        .with_account_whitelist(account_whitelist)
+        .with_metadata_whitelist(metadata_whitelist)
+        .build();
+    builder.exec(install_request).expect_success().commit();
+
+    let nft_contract_key: Key = support::get_nft_contract_hash(&builder).into();
+
+    let mint_session_call = ExecuteRequestBuilder::standard(
+        account_1_account_hash,
+        MINT_SESSION_WASM,
+        runtime_args! {
+            ARG_NFT_CONTRACT_HASH => nft_contract_key,
+            ARG_TOKEN_OWNER => Key::Account(account_2_account_hash),
+            ARG_TOKEN_META_DATA => TEST_PRETTY_721_META_DATA.to_string(),
+        },
+    )
+    .build();
+    builder.exec(mint_session_call).expect_success().commit();
+
+    let owner_account_hash = support::get_dictionary_value_from_key::<Key>(
+        &builder,
+        &nft_contract_key,
+        TOKEN_OWNERS,
+        &0u64.to_string(),
+    )
+    .into_account()
+    .unwrap();
+    assert_eq!(account_2_account_hash, owner_account_hash);
+
+    let dictionary_name = METADATA_NFT721;
+    let updated_metadata = TEST_PRETTY_UPDATED_721_META_DATA;
+
+    let update_metadata_request = ExecuteRequestBuilder::contract_call_by_hash(
+        account_2_account_hash,
+        support::get_nft_contract_hash(&builder),
+        ENTRY_POINT_SET_TOKEN_METADATA,
+        runtime_args! {
+            ARG_TOKEN_META_DATA => updated_metadata.to_string(),
+            ARG_TOKEN_ID => 0u64
+        },
+    )
+    .build();
+
+    builder.exec(update_metadata_request).expect_failure();
+
+    let error = builder.get_error().expect("should have an error");
+    assert_expected_error(
+        error,
+        206,
+        "Unlisted account hash should not be permitted to mint",
+    );
+
+    let update_metadata_request = ExecuteRequestBuilder::contract_call_by_hash(
+        account_1_account_hash,
+        support::get_nft_contract_hash(&builder),
+        ENTRY_POINT_SET_TOKEN_METADATA,
+        runtime_args! {
+            ARG_TOKEN_META_DATA => updated_metadata.to_string(),
+            ARG_TOKEN_ID => 0u64
+        },
+    )
+    .build();
+
+    builder
+        .exec(update_metadata_request)
+        .expect_success()
+        .commit();
+
+    let actual_updated_metadata = support::get_dictionary_value_from_key::<String>(
+        &builder,
+        &nft_contract_key,
+        dictionary_name,
+        &0u64.to_string(),
+    );
+
+    assert_eq!(actual_updated_metadata, updated_metadata.to_string());
 }
 
 #[test]

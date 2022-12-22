@@ -35,7 +35,6 @@ setup-test: build-contract
 	cp client/updated_receipts/target/wasm32-unknown-unknown/release/updated_receipts.wasm tests/wasm
 	cp test-contracts/minting_contract/target/wasm32-unknown-unknown/release/minting_contract.wasm tests/wasm
 
-
 test: setup-test
 	cd tests && cargo test
 

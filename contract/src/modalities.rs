@@ -159,6 +159,7 @@ impl TryFrom<u8> for NFTIdentifierMode {
 pub enum MetadataMutability {
     Immutable = 0,
     Mutable = 1,
+    Restricted = 2,
 }
 
 impl TryFrom<u8> for MetadataMutability {
@@ -168,6 +169,7 @@ impl TryFrom<u8> for MetadataMutability {
         match value {
             0 => Ok(MetadataMutability::Immutable),
             1 => Ok(MetadataMutability::Mutable),
+            2 => Ok(MetadataMutability::Restricted),
             _ => Err(NFTCoreError::InvalidMetadataMutability),
         }
     }
